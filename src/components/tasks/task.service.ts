@@ -1,6 +1,6 @@
 import { isValidObjectId } from "mongoose";
 import { HttpError } from "../../utils/http-error";
-import { TaskInput } from "./task.model";
+import { TaskFilter, TaskInput } from "./task.model";
 import { taskRepository } from "./task.repository";
 
 const PRIORITIES = ["low", "medium", "high"];
@@ -9,6 +9,11 @@ function validateId(id: string): void {
     if (!isValidObjectId(id)) {
         throw new HttpError(400, "El id no es válido");
     }
+}
+
+function pickTaskFields(data: TaskInput): TaskInput {
+    const { title, priority, dueDate, completed } = data;
+    return { title, priority, dueDate, completed };
 }
 
 function validateTask(data: TaskInput, isUpdate: boolean): void {
@@ -36,28 +41,46 @@ function validateTask(data: TaskInput, isUpdate: boolean): void {
 }
 
 export const taskService = {
-    async getAll() {
-        return taskRepository.findAll();
+    async getAll(ownerId: string, query: Record<string, unknown>) {
+        const filter: TaskFilter = { owner: ownerId };
+
+        if (query.completed !== undefined) {
+            if (query.completed !== "true" && query.completed !== "false") {
+                throw new HttpError(400, "El filtro completed debe ser true o false");
+            }
+            filter.completed = query.completed === "true";
+        }
+
+        if (query.priority !== undefined) {
+            if (typeof query.priority !== "string" || !PRIORITIES.includes(query.priority)) {
+                throw new HttpError(400, "El filtro priority debe ser low, medium o high");
+            }
+            filter.priority = query.priority;
+        }
+
+        return taskRepository.findAll(filter);
     },
 
-    async getById(id: string) {
+    async getById(id: string, ownerId: string) {
         validateId(id);
-        const task = await taskRepository.findById(id);
+        const task = await taskRepository.findOne(id, ownerId);
         if (!task) {
             throw new HttpError(404, "Tarea no encontrada");
         }
         return task;
     },
 
-    async create(data: TaskInput) {
-        validateTask(data, false);
-        return taskRepository.create(data);
+    async create(data: TaskInput, ownerId: string) {
+        const fields = pickTaskFields(data);
+        validateTask(fields, false);
+        return taskRepository.create(fields, ownerId);
     },
 
-    async update(id: string, data: TaskInput) {
+    async update(id: string, ownerId: string, data: TaskInput) {
         validateId(id);
-        validateTask(data, true);
-        const task = await taskRepository.update(id, data);
+        const fields = pickTaskFields(data);
+        validateTask(fields, true);
+        const task = await taskRepository.update(id, ownerId, fields);
         if (!task) {
             throw new HttpError(404, "Tarea no encontrada");
         }

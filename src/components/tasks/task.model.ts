@@ -7,12 +7,19 @@ export interface TaskInput {
     completed?: boolean;
 }
 
+export interface TaskFilter {
+    owner: string;
+    completed?: boolean;
+    priority?: string;
+}
+
 const taskSchema = new Schema(
     {
         title: { type: String, required: true, trim: true },
         priority: { type: String, default: "medium" },
         dueDate: { type: Date },
         completed: { type: Boolean, default: false },
+        owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
     },
     { timestamps: true }
 );

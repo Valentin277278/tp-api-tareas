@@ -1,17 +1,19 @@
-import { TaskModel, TaskInput } from "./task.model";
+import { TaskModel, TaskInput, TaskFilter } from "./task.model";
 
 export const taskRepository = {
-    findAll() {
-        return TaskModel.find();
+    findAll(filter: TaskFilter) {
+        return TaskModel.find(filter);
     },
-    findById(id: string) {
-        return TaskModel.findById(id);
+    findOne(id: string, ownerId: string) {
+        return TaskModel.findOne({ _id: id, owner: ownerId });
     },
-    create(data: TaskInput) {
-        return TaskModel.create(data);
+    create(data: TaskInput, ownerId: string) {
+        return TaskModel.create({ ...data, owner: ownerId });
     },
-    update(id: string, data: TaskInput) {
-        return TaskModel.findByIdAndUpdate(id, data, { returnDocument: "after" });
+    update(id: string, ownerId: string, data: TaskInput) {
+        return TaskModel.findOneAndUpdate({ _id: id, owner: ownerId }, data, {
+            returnDocument: "after",
+        });
     },
     remove(id: string) {
         return TaskModel.findByIdAndDelete(id);
